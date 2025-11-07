@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"dom",
+			"dom.iterable",
+			"dom.asynciterable",
+			"deno.ns",
+			"deno.unstable"
+		]
+	},
+	"tasks": {
+		"build:dev": "deno run -A --watch ./bundle.ts --dev",
+		"build": "deno run -A ./bundle.ts"
+	}
+}

@@ -1,0 +1,4 @@
+front/node_modules
+processor_emulator/target
+target
+front/package-lock.json

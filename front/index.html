@@ -1,0 +1,43 @@
+<html>
+    <head>
+        <title>Front Page</title>
+        <link rel="stylesheet/less" type="text/css" href="style.less" />
+        <script src="https://cdn.jsdelivr.net/npm/less" ></script>
+        <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+
+        <script src="./dev/transpiler.js" type="module"></script>
+        <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+    </head>
+    <body>
+        <div id="stack_wrapper">
+            <h2>Stack</h2>
+            <div id="stack">
+            </div>
+        </div>
+
+        <div id="registers_wrapper">
+            <h2>Registers</h2>
+            <div id="registers">
+                
+            </div>
+        </div>
+        
+
+        <div id="memory_wrapper">
+            <h2>Memory</h2>
+            <div id="memory">
+                
+            </div>
+        </div>
+        
+
+        <div id="controls">
+            <button id="step_button">Step</button>
+            <button id="run_button">Run</button>
+            <button id="reset_button">Reset</button>
+            <button id="debug_button">DEBUG</button>
+        </div>
+    </body>
+
+    <script src="./dist/emulator.js" type="module" defer></script>
+</html>
