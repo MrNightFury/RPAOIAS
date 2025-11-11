@@ -1,5 +1,5 @@
 import init, { Processor, MemoryUpdate, MemoryType } from "../../processor_emulator/pkg/processor_emulator.js";
-import { assembleString, decodeInstruction } from "./assembler.js";
+import { assembleString, decodeInstruction, assemble, opcodeNames, getLabels } from "./assembler.js";
 /// <reference types="jquery" />
 
 const wasm = await init();
@@ -44,18 +44,24 @@ function createRegister(name: string, value: number) {
 
 const posibleKeys = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"];
 
-function selectLine(address: number) {
+function ensureLineExists(address: number) {
     let memoryLines = document.querySelectorAll(".memory_hex");
     while (address >= memoryLines.length) {
         addMemoryLine(address, "0000", "0000 0000 0000 0000", "NOP");
         memoryLines = document.querySelectorAll(".memory_hex");
     }
+}
+
+function selectLine(address: number) {
+    ensureLineExists(address);
+    let memoryLines = document.querySelectorAll(".memory_hex");
     memoryLines.forEach(l => l.classList.remove("selected"));
     if (address != -1) memoryLines[address].classList.add("selected");
     selectedMemoryLine = address;
 }
 
 function updateMemoryLine(address: number, value: number) {
+    ensureLineExists(address);
     const line = $(".memory_line").eq(address);
     line.find(".memory_hex").text(value.toString(16).toUpperCase().padStart(4, '0'));
     line.find(".memory_bin").text(value.toString(2).padStart(16, '0').match(/.{1,4}/g)?.join(' ') || '');
@@ -92,7 +98,13 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("paste", (event) => {
-    let pasteData = event.clipboardData?.getData('text') || '';
+    let pasteData = event.clipboardData?.getData('text')
+                                        .split("\n")
+                                        .map(str => {
+                                            let parts = str.split(";");
+                                            return parts[parts.length-1].trim();
+                                        })
+                                        .join("") || '';
     if (!/^[0-9A-Fa-f]*$/.test(pasteData) || selectedMemoryLine === -1) {
         return;
     }
@@ -133,12 +145,32 @@ document.getElementById("debug_button")?.addEventListener("click", () => {
 $("#step_button").on("click", () => {
     processor.step();
 });
+$("#reset_button").on("click", () => {
+    processor.reset();
+});
 
+// Zero = 0b0000_0001,
+// Carry = 0b0000_0010,
+// Greater = 0b0000_0100,
+// Less = 0b0000_1000,
 
 function getRegName(regIndex: number): string {
     if (regIndex === 16) return "#reg_PC";
     if (regIndex === 17) return "#reg_SP";
+    if (regIndex === 18) return "#flags";
     return "#reg_R" + regIndex.toString().padStart(2, '0');
+}
+
+function setFlags(flags: number) {
+    let flagNames = ["Z", "C", "G", "L"];
+    for (let i = 0; i < flagNames.length; i++) {
+        const flagDiv = $(`#flag_${flagNames[i]}`);
+        if ((flags & (1 << i)) !== 0) {
+            flagDiv.addClass("flag_set");
+        } else {
+            flagDiv.removeClass("flag_set");
+        }
+    }
 }
 
 processor.set_update_callback((update: MemoryUpdate) => {
@@ -146,9 +178,83 @@ processor.set_update_callback((update: MemoryUpdate) => {
         case MemoryType.Reg:
             const regName = getRegName(update.Address);
             console.log("Updating register:", regName, "to value:", update.Value);
+            if (regName === "#flags") {
+                setFlags(update.Value);
+                return;
+            }
+            if (regName === "#reg_SP") {
+                const stackDiv = $("#stack");
+                const sp = update.Value;
+                stackDiv.find(".register").each((index, element) => {
+                    if (index < sp) {
+                        $(element).addClass("active");
+                    } else {
+                        $(element).removeClass("active");
+                    }
+                });
+            } else if (regName === "#reg_PC") {
+                $(".memory_line").removeClass("executing");
+                const executingLine = $(".memory_line").eq(update.Value);
+                executingLine.addClass("executing");
+            }
             const regDiv = $(regName);
             console.log("Found register div:", regDiv);
             regDiv.find(".register_value").text(update.Value.toString(16).toUpperCase().padStart(4, '0'));
             break;
     }
 });
+
+$("#code").on("input", (e) => {
+    console.log("Code input changed");
+    const codeLines = (e.target as HTMLTextAreaElement).value.split("\n").length;
+    let lineNumbers = "";
+    for (let i = 1; i <= codeLines; i++) {
+        lineNumbers += i + "\n";
+    }
+    $("#code_line_numbers pre").text(lineNumbers);
+}).on("focus", () => {
+    selectLine(-1);
+});
+
+$("#assemble_button").on("click", () => {
+    const code = ($("#code").val() as string) || "";
+    const machineCode = assemble(code);
+    console.log("Assembled machine code:", machineCode);
+    for (let i = 0; i < machineCode.length; i++) {
+        processor.set_memory_word(i, machineCode[i]);
+        updateMemoryLine(i, machineCode[i]);
+    }
+    selectLine(0);
+});
+
+
+const TestRegex = new RegExp(`\\b(${Array.from(opcodeNames).filter(opcode => opcode != '-').map(opcode => 
+    opcode.split("").map(c => "[" + c.toLowerCase() + c.toUpperCase() + "]").join("")
+).join('|')})\\b`, 'g');
+
+function highlightSyntax(text: string) {
+    const labels = getLabels(text);
+    let labelsRegex = new RegExp(`\\b(${labels.join("|")})\\b`, 'g');
+    console.log("LabelsRegex:", labelsRegex);
+    return text.split("\n").map(line => {
+        const commentIndex = line.indexOf(";");
+        let codePart = commentIndex === -1 ? line : line.slice(0, commentIndex);
+        let commentPart = commentIndex === -1 ? "" : line.slice(commentIndex);
+        codePart = codePart
+               .replace(/\b[a-zA-Z_]+:/g, '<span class="token-label">$&</span>')
+               .replace(labelsRegex, '<span class="token-label">$&</span>')
+               .replace(/\b[\da-fA-F]+\b/g, '<span class="token-number">$&</span>')
+               .replace(TestRegex, '<span class="token-opcode">$1</span>')
+        if (commentPart.length > 0) {
+            commentPart = `<span class="token-comment">${commentPart}</span>`;
+        }
+        return codePart + commentPart;
+    }).join("\n");
+}
+
+$("#code")
+    .on("input", (e) => {
+        $("#highlight").html(highlightSyntax((e.target as HTMLTextAreaElement).value));
+    }).on("scroll", (e) => {
+        $("#highlight").scrollTop((e.target as HTMLTextAreaElement).scrollTop);
+    });

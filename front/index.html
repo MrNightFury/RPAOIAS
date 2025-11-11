@@ -2,13 +2,30 @@
     <head>
         <title>Front Page</title>
         <link rel="stylesheet/less" type="text/css" href="style.less" />
+         <!-- <link rel="stylesheet" type="text/css" href="style.css"> -->
         <script src="https://cdn.jsdelivr.net/npm/less" ></script>
         <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
 
-        <script src="./dev/transpiler.js" type="module"></script>
         <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
     </head>
     <body>
+        <div id="code_wrapper">
+            
+            <div id="editor">
+                <div id="code_line_numbers">
+                    <pre>1</pre>
+                </div>
+                <div id="highlight_wrapper">
+                    <!-- <pre id="highlight"> -->
+                        <span id="highlight"></span>
+                    <!-- </pre> -->
+                    <textarea id="code" spellcheck="false"></textarea>
+                </div>
+            </div>
+            
+            <button id="assemble_button">Assemble</button>
+        </div>
+
         <div id="stack_wrapper">
             <h2>Stack</h2>
             <div id="stack">
@@ -38,6 +55,16 @@
             <button id="debug_button">DEBUG</button>
         </div>
     </body>
+    <div id="flags_wrapper">
+        <h2>Flags</h2>
+        <div id="flags_container">
+            <div id="flag_Z" class="flag">Z</div>
+            <div id="flag_C" class="flag">C</div>
+            <div id="flag_G" class="flag">G</div>
+            <div id="flag_L" class="flag">L</div>
+        </div>
+    </div>
+        
 
     <script src="./dist/emulator.js" type="module" defer></script>
 </html>

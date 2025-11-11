@@ -48,6 +48,7 @@ impl Processor {
         // Instruction fetch
         let instruction = self.mem[self.PC as usize];
         console::log_1(&format!("Fetched instruction `{:b}` at PC={}", instruction, self.PC).into());
+        let mut jumped = false;
         if instruction >> 15 & 1 == 1 {
             // Address instruction
             let opcode  = (instruction >> 12) & 0b1111;
@@ -62,6 +63,46 @@ impl Processor {
                     // Store
                     self.mem[address as usize] = self.stack.pop();
                 }
+                0b1010 => {
+                    // JMP
+                    self.PC = address;
+                    jumped = true;
+                }
+                0b1011 => {
+                    // JZ
+                    if self.flags & (Flag::Zero as u8) != 0 {
+                        self.PC = address;
+                        jumped = true;
+                    }
+                }
+                0b1100 => {
+                    // JNZ
+                    if self.flags & (Flag::Zero as u8) == 0 {
+                        self.PC = address;
+                        jumped = true;
+                    }
+                }
+                0b1101 => {
+                    // JL
+                    if self.flags & (Flag::Less as u8) != 0 {
+                        self.PC = address;
+                        jumped = true;
+                    }
+                }
+                0b1110 => {
+                    // JG
+                    if self.flags & (Flag::Greater as u8) != 0 {
+                        self.PC = address;
+                        jumped = true;
+                    }
+                }
+                0b1111 => {
+                    // JC
+                    if self.flags & (Flag::Carry as u8) != 0 {
+                        self.PC = address;
+                        jumped = true;
+                    }
+                }
                 _ => {}
             }
         } else {
@@ -73,7 +114,8 @@ impl Processor {
                 0b0000_0000 => {},    // NOP
                 0b0000_0001 => {      // CMP
                     self.flags = 0;
-                    match self.stack.top().cmp(&0) {
+                    let top = self.stack.pop();
+                    match self.stack.pop().cmp(&top) {
                         std::cmp::Ordering::Equal => {
                             self.flags |= Flag::Zero as u8;
                         },
@@ -84,6 +126,7 @@ impl Processor {
                             self.flags |= Flag::Less as u8;
                         }
                     }
+                    self.trigger_update(MemoryUpdate { MemoryType: MemoryType::Reg, Address: 18, Value: self.flags as u16 });
                 },
                 0b0000_1111 => {      // DBG
                     console::log_1(&format!("DBG: ST={}, PC={}, Top={}", self.ST, self.PC, self.stack.top()).into());
@@ -108,7 +151,15 @@ impl Processor {
                     self.stack.push(a);
                     self.stack.push(b);
                 },
-                0b0001_1001 => {      // OVER
+                0b0001_1001 => {      // ROT
+                    let a = self.stack.pop();
+                    let b = self.stack.pop();
+                    let c = self.stack.pop();
+                    self.stack.push(b);
+                    self.stack.push(a);
+                    self.stack.push(c);
+                },
+                0b0001_1010 => {      // OVER
                     self.stack.push(self.stack.nos());
                 },
 
@@ -131,6 +182,32 @@ impl Processor {
                     }
                     self.stack.push(c as u16);
                 },
+                0b0010_0100 => {     // MUL
+                    let a = self.stack.pop();
+                    let b = self.stack.pop();
+                    let c = a as u32 * b as u32;
+                    if c > 0xFFFF {
+                        self.flags |= Flag::Carry as u8;
+                    }
+                    self.stack.push(c as u16);
+                }
+                0b0010_0101 => {    // DIV
+                    let a = self.stack.pop();
+                    let b = self.stack.pop();
+                    if a == 0 {
+                        self.stack.push(0);
+                    } else {
+                        self.stack.push(b / a);
+                    }
+                }
+                0b0010_1000 => {    // INC
+                    let a = self.stack.pop();
+                    self.stack.push(a.wrapping_add(1));
+                }
+                0b0010_1001 => {    // DEC
+                    let a = self.stack.pop();
+                    self.stack.push(a.wrapping_sub(1));
+                }
 
                 0b0100_0100 => {      // LOADI
                     let address = self.stack.pop();
@@ -145,8 +222,9 @@ impl Processor {
                 _ => { console::log_1(&format!("Unknown opcode `{}`", opcode).into()) }
             }
         }
-        self.PC += 1;
-
+        if !jumped {
+            self.PC += 1;
+        }
 
         self.trigger_update(MemoryUpdate { MemoryType: MemoryType::Reg, Address: 16, Value: self.PC });
     }
@@ -188,7 +266,9 @@ impl Processor {
         self.PC = 0;
         self.ST = 0;
         self.flags = 0;
+        let callback = self.stack.callback.take();
         self.stack = Stack::new();
+        self.stack.callback = callback;
         self.stack.trigger_update();
         self.trigger_update(MemoryUpdate { MemoryType: MemoryType::Reg, Address: 16, Value: 0 });
         self.trigger_update(MemoryUpdate { MemoryType: MemoryType::Reg, Address: 17, Value: 0 });
