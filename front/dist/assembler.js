@@ -1,6 +1,7 @@
 export const opcodes = {
     "NOP": 0x0,
     "CMP": 0x1,
+    "STOP": 0x04,
     "DBG": 0x0f,
     "PUSHL": 0x10,
     "PUSH": 0x10,
@@ -8,6 +9,7 @@ export const opcodes = {
     "DROP": 0x14,
     "DUP": 0x15,
     "SWAP": 0x18,
+    "BRAINROT": 0x19,
     "ROT": 0x19,
     "OVER": 0x1a,
     "ADD": 0x20,

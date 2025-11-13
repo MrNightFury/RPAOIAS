@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 use js_sys::Function;
+use wasm_bindgen_futures::spawn_local;
 use crate::{memory_update::{MemoryType, MemoryUpdate}, stack::*};
 mod stack;
 mod memory_update;
@@ -13,6 +14,7 @@ pub enum Flag {
     Carry = 0b0000_0010,
     Greater = 0b0000_0100,
     Less = 0b0000_1000,
+    Stop = 0b0001_0000,
 }
 
 
@@ -128,6 +130,10 @@ impl Processor {
                     }
                     self.trigger_update(MemoryUpdate { MemoryType: MemoryType::Reg, Address: 18, Value: self.flags as u16 });
                 },
+                0b0000_0100 => {      // STOP
+                    self.flags |= Flag::Stop as u8;
+                    self.trigger_update(MemoryUpdate { MemoryType: MemoryType::Reg, Address: 18, Value: self.flags as u16 });
+                },
                 0b0000_1111 => {      // DBG
                     console::log_1(&format!("DBG: ST={}, PC={}, Top={}", self.ST, self.PC, self.stack.top()).into());
                 },
@@ -227,6 +233,10 @@ impl Processor {
         }
 
         self.trigger_update(MemoryUpdate { MemoryType: MemoryType::Reg, Address: 16, Value: self.PC });
+    }
+
+    pub async fn run(&mut self) {
+        
     }
 
     pub fn get_stack_ptr(&self) -> *const u16 {

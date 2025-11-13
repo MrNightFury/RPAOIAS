@@ -162,7 +162,7 @@ function getRegName(regIndex: number): string {
 }
 
 function setFlags(flags: number) {
-    let flagNames = ["Z", "C", "G", "L"];
+    let flagNames = ["Z", "C", "G", "L"];   
     for (let i = 0; i < flagNames.length; i++) {
         const flagDiv = $(`#flag_${flagNames[i]}`);
         if ((flags & (1 << i)) !== 0) {
@@ -180,6 +180,11 @@ processor.set_update_callback((update: MemoryUpdate) => {
             console.log("Updating register:", regName, "to value:", update.Value);
             if (regName === "#flags") {
                 setFlags(update.Value);
+                if ((update.Value & 0b0001_0000) !== 0) {
+                    if (runInterval !== 0) {
+                        clearInterval(runInterval);
+                    }
+                }
                 return;
             }
             if (regName === "#reg_SP") {
@@ -258,3 +263,23 @@ $("#code")
     }).on("scroll", (e) => {
         $("#highlight").scrollTop((e.target as HTMLTextAreaElement).scrollTop);
     });
+
+
+let runInterval: number = 0;
+function start(runIntervalDuration: number) {
+    if (runInterval !== 0) {
+        clearInterval(runInterval);
+    }
+    runInterval = setInterval(() => {
+        processor.step();
+    }, runIntervalDuration);
+}
+$("#run_button").on("click", async () => {
+    start($("#run_interval_input").val() as number);
+});
+$("#run_interval_input").on("change", (e) => {
+    if (runInterval !== 0) {
+        clearInterval(runInterval);
+        start((e.target as HTMLInputElement).valueAsNumber);
+    }
+}); 

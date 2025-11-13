@@ -1,4 +1,4 @@
-PUSH 20 ; X
+PUSH 21 ; X
 DUP     ; X X
 LOADI   ; X N
 OVER    ; X N X
@@ -23,7 +23,7 @@ ROT     ; max i end
 OVER    ; max i end i
 OVER    ; max i end i end
 CMP     ; max i end
-JZ end
+JG end
 ROT
 ROT     ; end max i
 JMP loop
@@ -38,6 +38,7 @@ JMP check_end
 end:    ; max i end
 DROP
 DROP
+STOP
 
 ; data
 ; 000a

@@ -162,6 +162,11 @@ processor.set_update_callback((update) => {
             console.log("Updating register:", regName, "to value:", update.Value);
             if (regName === "#flags") {
                 setFlags(update.Value);
+                if ((update.Value & 16) !== 0) {
+                    if (runInterval !== 0) {
+                        clearInterval(runInterval);
+                    }
+                }
                 return;
             }
             if (regName === "#reg_SP") {
@@ -233,4 +238,22 @@ $("#code")
     $("#highlight").html(highlightSyntax(e.target.value));
 }).on("scroll", (e) => {
     $("#highlight").scrollTop(e.target.scrollTop);
+});
+let runInterval = 0;
+function start(runIntervalDuration) {
+    if (runInterval !== 0) {
+        clearInterval(runInterval);
+    }
+    runInterval = setInterval(() => {
+        processor.step();
+    }, runIntervalDuration);
+}
+$("#run_button").on("click", async () => {
+    start($("#run_interval_input").val());
+});
+$("#run_interval_input").on("change", (e) => {
+    if (runInterval !== 0) {
+        clearInterval(runInterval);
+        start(e.target.valueAsNumber);
+    }
 });
