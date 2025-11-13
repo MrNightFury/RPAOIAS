@@ -10,6 +10,7 @@ export const opcodes = {
     "DUP": 0x15,
     "SWAP": 0x18,
     "ROT": 0x19,
+    "BRAINROT": 0x19,
     "OVER": 0x1a,
     
     "ADD":  0x20,
