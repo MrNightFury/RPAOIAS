@@ -128,6 +128,9 @@ $("#step_button").on("click", () => {
     processor.step();
 });
 $("#reset_button").on("click", () => {
+    if (runInterval !== 0) {
+        clearInterval(runInterval);
+    }
     processor.reset();
 });
 // Zero = 0b0000_0001,

@@ -146,6 +146,9 @@ $("#step_button").on("click", () => {
     processor.step();
 });
 $("#reset_button").on("click", () => {
+    if (runInterval !== 0) {
+        clearInterval(runInterval);
+    }
     processor.reset();
 });
 
